@@ -45,7 +45,7 @@ sent as live messages and are **not** stored here.
 `target_id`; **[espionage](espionage.md)** cooldowns are namespaced as `-target_id`.
 
 ### `chat`
-`(id PK, user_id, username, game_id, message, timestamp)` — the [Tavern](tavern.md).
+`(id PK, user_id, username, game_id, message, timestamp)` — the [Tavern](tavern.md). Recent rows seed the last-5 arrival recap; live delivery is based on users whose state is `chatting`.
 
 ### `alliances`
 `(id PK, name UNIQUE, tag UNIQUE, leader_id, created_at)` — see [Alliances](alliances.md).

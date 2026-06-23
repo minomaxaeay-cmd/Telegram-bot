@@ -72,6 +72,23 @@ def esc(value):
         return ""
     return html.escape(str(value))
 
+
+def player_profile_link(user_id, username, game_id):
+    """Formats a player name + game ID as a Telegram profile hyperlink."""
+    return f'<a href="tg://user?id={int(user_id)}">{esc(username)}({esc(game_id)})</a>'
+
+def tavern_message_line(user_id, username, game_id, message):
+    return f'{player_profile_link(user_id, username, game_id)}: {esc(message)}'
+
+def validate_tavern_message(text):
+    if len(text) > config.MAX_CHAT_LENGTH:
+        return f"❌ Message too long! ({len(text)}/{config.MAX_CHAT_LENGTH})"
+    if "@" in text:
+        return "❌ Tavern messages cannot include @ mentions."
+    if re.search(r'(?:https?://|www\.|t\.me/|telegram\.me/|\S+\.\S+)', text, re.IGNORECASE):
+        return "❌ Tavern messages cannot include links."
+    return None
+
 def safe_render(chat_id, text, markup, edit_msg_id=None):
     """Edits the target message in place; if that fails (e.g. it's a photo
     message coming from a profile view), it deletes it and sends a fresh one.
@@ -680,12 +697,19 @@ def handle_text(message):
             set_state(user_id, None)
             bot.send_message(user_id, "You leave the tavern.", reply_markup=main_menu())
         else:
-            database.add_chat_message(user_id, get_lord_name(user), user['game_id'], text)
-            msgs = database.get_chat_messages()
-            chat_log = "<b>🍻 THE TAVERN</b>\n\n"
-            for m in msgs:
-                chat_log += f"<b>{esc(m['username'])} (<code>{m['game_id']}</code>):</b> {esc(m['message'])}\n"
-            bot.send_message(user_id, chat_log, parse_mode="HTML")
+            validation_error = validate_tavern_message(text)
+            if validation_error:
+                bot.send_message(user_id, validation_error)
+                return
+
+            username = get_lord_name(user)
+            database.add_chat_message(user_id, username, user['game_id'], text)
+            tavern_line = tavern_message_line(user_id, username, user['game_id'], text)
+            for recipient_id in database.get_tavern_user_ids(exclude_user_id=user_id):
+                try:
+                    bot.send_message(recipient_id, tavern_line, parse_mode="HTML", disable_web_page_preview=True)
+                except Exception as e:
+                    print(f"[IronDominion] tavern delivery failed for {recipient_id}: {e}")
 
     # B. SEARCH PLAYER
     elif state == "search_player":
@@ -1117,13 +1141,16 @@ def view_reports(message):
 
 def enter_tavern(message):
     set_state(message.chat.id, "chatting")
-    msgs = database.get_chat_messages()
-    chat_log = "<b>🍻 THE TAVERN</b>\n<i>Talk to other lords here.</i>\n\n"
-    for m in msgs:
-        chat_log += f"<b>{esc(m['username'])} (<code>{m['game_id']}</code>):</b> {esc(m['message'])}\n"
+    msgs = database.get_chat_messages(limit=5)
+    chat_log = "<b>🍻 THE TAVERN</b>\n<i>Talk to other lords here. Recent messages:</i>\n\n"
+    if msgs:
+        for m in msgs:
+            chat_log += tavern_message_line(m['user_id'], m['username'], m['game_id'], m['message']) + "\n"
+    else:
+        chat_log += "<i>No recent messages yet.</i>\n"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🔙 Exit Tavern")
-    bot.send_message(message.chat.id, chat_log, parse_mode="HTML", reply_markup=markup)
+    bot.send_message(message.chat.id, chat_log, parse_mode="HTML", reply_markup=markup, disable_web_page_preview=True)
 
 def view_alliance(message, edit_msg_id=None):
     user_id = message.chat.id
