@@ -1,0 +1,76 @@
+================================================================================
+TUNABLE ANALYSIS — GROUNDED REVIEW OF ALL MG TUNABLES
+================================================================================
+
+METHOD
+------
+Each tunable was checked against the REAL game constants and formulas:
+  - Income  : minutes * (mine_lvl * 5) gold/min, passive, offline-capped 24h
+              (database.py:188-195). Mine L1 = 7,200 gold/day.
+  - Cost    : base * 1.6^level  (game_logic.py:34)  -- exponential, NO level cap.
+  - Combat  : simulate_battle (game_logic.py:51-180). Defender wins mutual
+              annihilation and value-ties -> structural defender bias.
+  - Constants: config.py (unit costs, upkeep, loot 30%, vault 1000/lvl, etc.)
+NOTE: this workspace cannot execute Python (only ls/dbt/snow), so results were
+derived analytically, not by running a sim.
+
+CONFIDENCE-INTERVAL BASIS (used for all SIM_COUNT decisions)
+  For a win-rate p~=0.5, SE = sqrt(0.25/n), 95% CI = 1.96*SE:
+    n=200  -> +/-6.9%   (too wide to resolve a 50% vs 55% band)
+    n=1000 -> +/-3.1%
+    n=2500 -> +/-2.0%
+
+
+VERDICT TABLE
+-------------
+TUNABLE                 OLD      ->  NEW         VERDICT  REASON
+SIM_COUNT               200          1000        CHANGE   n=200 CI +/-6.9% > 5% band
+WINRATE_CEILING         55%          55%         KEEP     sound; round-robin cancels
+                                                          defender bias
+WINRATE_FLOOR_COUNTER   50%          60%         CHANGE   50% = coin-flip, not counter
+CONFIDENCE              95%          95%         KEEP     standard
+STAT_FORMULA_TOL        10%          10%         KEEP     reasonable match band
+FORMULA_COVERAGE        90%          70%         CHANGE   RPS asymmetry is intentional
+GOLD_RECONCILE_TOL      0            1 gold      CHANGE   gold is float -> rounding
+HORIZON_MAX_DAYS        365          365*        BLOCKED  needs MAX_BUILDING_LEVEL;
+                                                          recompute (likely > 365)
+DAILY_PLAY_MINUTES      30           removed     CHANGE   income passive/offline; use
+                                                          real days not play-minutes
+MARGINAL_FLOOR          0.05         0.05        KEEP     ok once benefit metric set
+SPIKE_FACTOR            (new)        2.0         ADD      bound adjacent cost jumps
+HOOK_MAX_DAYS           3            3           KEEP     day-1 gold buys real army;
+                                                          24h newbie shield anyway
+HOOK_POWER_PCT          25%          25%         KEEP     reasonable "viable" bar
+SUMMIT_MIN_DAYS         90           90*         BLOCKED  needs cap
+SUMMIT_MAX_DAYS         365          =HORIZON     CHANGE   share one constant w/ MG2
+INCOME_RATE_CAP         derived      derived     KEEP     good; pin to mine+raid caps
+SIM_PLAYER_YEARS        50           50          KEEP     enough to expose inflation
+EQUAL_GOLD_BUDGET       fixed        [2k,10k,50k] CHANGE  army behavior varies w/ tier
+EQUAL_SPEND (MG6)       fixed        [2k,10k,50k] CHANGE  same reason
+SAMPLE_SIZE             500          500         KEEP     adequate for small space
+BALANCED_MARGIN         60%          60%         KEEP     reasonable bar
+TARGET_BAND             45-55%       45-55%      KEEP     consistent w/ ceiling
+MAX_ITERATIONS          20           20          KEEP     fine
+CONVERGENCE_TOL         2%           4%          CHANGE   2% below sim noise at n=1000
+STEP_DAMPING            0.5          0.5         KEEP     stable convergence
+
+(*) BLOCKED tunables stay at their placeholder until MG0.P1 (MAX_BUILDING_LEVEL)
+    is established, then must be recomputed.
+
+
+TWO BLOCKERS (see MG0_prerequisites.txt)
+----------------------------------------
+B1  No MAX_BUILDING_LEVEL exists -> "fully max" is infinite -> MG2/MG3 horizon
+    tunables cannot be evaluated. Proposed cap = 20.
+B2  MG4 sink ledger was incomplete -> added building_cost, recruitment_cost,
+    alliance_fee (now fixed in MG4).
+
+
+KEY ECONOMY INSIGHT
+-------------------
+Income is LINEAR in mine level (5/min per level) but upgrade cost is EXPONENTIAL
+(1.6^level). Late game therefore plateaus hard: each extra level of income costs
+~1.6x more than the last. This single relationship drives MG2 (honest long
+horizon) and MG3 (bounded summit) and must be the first thing tuned in the
+overhaul.
+================================================================================

@@ -1,0 +1,64 @@
+================================================================================
+MG0 — PREREQUISITES (MUST BE ESTABLISHED BEFORE THE OVERHAUL)
+================================================================================
+
+LAW
+---
+Two design facts are currently MISSING from the game and make several later
+Mega-Goals impossible to evaluate. They must be established first. MG0 is not a
+balance goal — it is the foundation the balance goals stand on.
+
+
+TUNABLES
+--------
+  MAX_BUILDING_LEVEL = 20     # the cap that gives "fully max" a finite meaning
+
+
+PREREQUISITE P1 — Define a maximum building level.
+   PROBLEM   : Building cost = base * 1.6^level (game_logic.py:34) with NO cap
+               anywhere in the code. Upgrades are infinite, so "fully max" and
+               therefore time-to-max (MG2.C2), the summit (MG3.C2), and the
+               progress bar (MG2) are all undefined / infinite.
+   REQUIRED  : Introduce MAX_BUILDING_LEVEL (proposed 20). All horizon math in
+               MG2 and MG3 is computed against this cap.
+   CHECK     : can_build refuses upgrades beyond MAX_BUILDING_LEVEL; a finite
+               total cost-to-max can be computed.
+   PASS WHEN : No building can exceed the cap, and cost-to-max is finite.
+
+   COST REFERENCE (with current numbers, geometric series base*(1.6^L - 1)/0.6):
+     castle  L1->L20 : ~500  * (1.6^20-1)/0.6  ~= 10.5M gold
+     gold_mine L1->L20: ~100 * (1.6^20-1)/0.6  ~= 2.1M gold
+   At mine L20 income = 20*5 = 100/min = 144,000/day. Cost grows EXPONENTIALLY
+   while income grows LINEARLY -> strong late-game plateau. This is why
+   HORIZON_MAX_DAYS / SUMMIT_MAX_DAYS must be recomputed once the cap is fixed
+   (365 may be too low for a full all-buildings max).
+
+
+PREREQUISITE P2 — Complete the economy sink ledger.
+   PROBLEM   : MG4 conservation can only be verified if EVERY gold sink is
+               declared. The original MG4 listed only upkeep/casualties/desertion
+               and omitted real sinks that destroy gold:
+                 - building_cost     (gold spent in can_build)
+                 - recruitment_cost  (gold spent buying units)
+                 - alliance_fee      (2000 gold, database.py:428, vanishes)
+   REQUIRED  : MG4.DECLARED_SINKS includes all of the above (now updated).
+   CHECK     : Every code path that decreases user gold maps to a declared sink
+               or a declared transfer (loot/heist).
+   PASS WHEN : Zero undeclared gold-decreasing code paths remain.
+
+
+PREREQUISITE P3 (recommended) — Decide the fate of dead/inert mechanics.
+   These are not blockers but should be resolved during the overhaul so MG1/MG6
+   (no inert mechanics) can pass:
+     - UNITS[*].org : present on every unit but NEVER read by simulate_battle.
+     - watchtower   : desc "Defense bonus" but only affects espionage, not battle.
+     - blacksmith   : desc "Unlocks armor" but only gates recruitment.
+     - mobile stance: identical to standard except the RPS tactical bonus.
+   CHECK     : Each is either given a real, used effect or removed/relabeled.
+
+
+COMPLETION
+----------
+MG0 is COMPLETE when P1 and P2 pass (P3 recommended). Only then are MG2, MG3,
+and MG4 meaningfully evaluable. Work order: MG0 -> MG1 -> ... -> MG7.
+================================================================================

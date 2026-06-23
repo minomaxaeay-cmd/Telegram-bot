@@ -1,0 +1,77 @@
+================================================================================
+IRON DOMINION WIKI — PROGRESS TRACKER
+================================================================================
+Legend: [ ] todo   [~] in progress   [x] done
+Follows WIKI_MEGAPLAN.txt. Updated as pages are completed.
+
+SETUP
+  [x] WIKI_MEGAPLAN.txt
+  [x] WIKI_PROGRESS.txt
+
+PHASE 1 — HUB + MECHANICS
+  [x] 00_INDEX.md
+  [x] GRAPH.md
+  [x] economy.md
+  [x] combat.md
+  [x] buildings.md
+  [x] units.md
+  [x] espionage.md
+  [x] alliances.md
+  [x] seasons.md
+  [x] renown.md
+  [x] progression.md
+  [x] protection.md
+  [x] tavern.md
+  [x] profiles.md
+  [~] >>> PHASE 1 REVIEW (pause for user)
+
+PHASE 2 — REFERENCE
+  [x] ref_units/peasant.md
+  [x] ref_units/man_at_arms.md
+  [x] ref_units/pikeman.md
+  [x] ref_units/knight.md
+  [x] ref_units/spy.md
+  [x] ref_buildings/castle.md
+  [x] ref_buildings/gold_mine.md
+  [x] ref_buildings/barracks.md
+  [x] ref_buildings/blacksmith.md
+  [x] ref_buildings/watchtower.md
+  [x] ref_tribes/highlander.md
+  [x] ref_tribes/merchant.md
+  [x] ref_tribes/builder.md
+  [x] ref_stances/standard.md
+  [x] ref_stances/aggressive.md
+  [x] ref_stances/defensive.md
+  [x] ref_stances/mobile.md
+  [x] ref_constants.md
+  [~] >>> PHASE 2 REVIEW (pause for user)
+
+PHASE 3 — ARCHITECTURE
+  [x] arch_overview.md
+  [x] arch_database.md
+  [x] arch_commands.md
+  [x] arch_state_machine.md
+  [x] >>> PHASE 3 REVIEW (pause for user)
+
+FINAL
+  [~] Validate all inline links resolve
+  [ ] Offer downloadable zip (SSE stage + presigned URL)
+
+NOTE: While reading bot.py for Phase 3, found & fixed a real regression from MG2 —
+the `def show_status(message):` line had been swallowed (its body merged into
+view_renown_leaderboard), which would crash the 📊 Status button. Fixed in bot.py.
+
+FEATURE UPDATE (admin tools + player protection waiver):
+  [x] New page: admin.md (gold, broadcast, DM, alliance msg, ban/unban,
+      bot-image swap carousel, media ID, new season).
+  [x] protection.md — documented player-initiated early waive (protection_waived,
+      attack-time confirm prompt; the "Attacking ends your shield" text is now true).
+  [x] profiles.md — avatars now DB-backed (meta.avatars) + admin-swappable.
+  [x] arch_database.md — new columns banned, protection_waived; meta.avatars JSON.
+  [x] arch_commands.md — new admin callbacks, aimg:*, waive:*, handle_admin_media.
+  [x] arch_state_machine.md — admin_* and admin_set_image/admin_get_media states.
+  [x] 00_INDEX.md + GRAPH.md — linked admin.md.
+  Code: database.py (is_banned/set_banned/waive_protection/get_all_user_ids/
+  get_avatars/set_avatar + columns + meta seed), bot.py (admin console, flows,
+  media handler, ban lockout, waive flow, DB-backed avatars).
+================================================================================

@@ -1,0 +1,88 @@
+================================================================================
+IRON DOMINION — WIKI MEGA-PLAN  (the authoritative blueprint; I follow this)
+================================================================================
+
+GOAL
+----
+A HOI4-style, cross-linked wiki for the Iron Dominion game, DERIVED SOLELY FROM
+THE CODEBASE (config.py, game_balance.py, game_logic.py, database.py, bot.py).
+Nothing invented; every value/formula/behavior traced to its source file.
+
+FORMAT & CONVENTIONS
+--------------------
+- Markdown (.md), located in: mysite/myTelegramBots/IronDominion/wiki/
+- INLINE HYPERLINKS: the first mention of a keyword links to its page, e.g.
+  "[Knight](ref_units/knight.md)", "[combat](combat.md)". Use RELATIVE paths
+  (from the file's own folder; ref pages live in subfolders).
+- Every page ends with a "## See also" footer listing related pages.
+- Every page ends with a "Source:" line citing the code file(s) it derives from.
+- GRAPH.md holds the explicit page->page edge list (the "graph" view).
+- Tone: factual, exhaustive, wiki-style. Include exact numbers, formulas, tiers.
+
+DIRECTORY LAYOUT
+----------------
+wiki/
+  00_INDEX.md                 table of contents + how to read
+  GRAPH.md                    adjacency list of all cross-references
+  WIKI_MEGAPLAN.txt           (this file)
+  WIKI_PROGRESS.txt           progress tracker
+  -- Phase 1: Mechanics --
+  economy.md combat.md buildings.md units.md espionage.md alliances.md
+  seasons.md renown.md progression.md protection.md tavern.md profiles.md
+  -- Phase 2: Reference --
+  ref_units/{peasant,man_at_arms,pikeman,knight,spy}.md
+  ref_buildings/{castle,gold_mine,barracks,blacksmith,watchtower}.md
+  ref_tribes/{highlander,merchant,builder}.md
+  ref_stances/{standard,aggressive,defensive,mobile}.md
+  ref_constants.md
+  -- Phase 3: Architecture --
+  arch_overview.md arch_database.md arch_commands.md arch_state_machine.md
+
+PHASES (each pauses for user review)
+------------------------------------
+PHASE 1 — HUB + MECHANICS
+  00_INDEX.md, GRAPH.md, and all 12 mechanics pages. Read all logic code first.
+PHASE 2 — REFERENCE
+  One page per unit / building / tribe / stance + ref_constants.md. Exact stats
+  from config.py + game_balance.py backbone. Each links back to mechanics pages.
+PHASE 3 — ARCHITECTURE
+  arch_overview (modules & how they call each other), arch_database (every table
+  & column from init_db + migrations), arch_commands (commands, menu buttons,
+  every callback action), arch_state_machine (user "state" flows in handle_text).
+
+CONTENT CHECKLIST PER TOPIC (so nothing is left out)
+----------------------------------------------------
+economy     : starting gold (1000), gold_mine income = mine_lvl*5/min, 24h offline
+              cap, merchant +8%, Renown perk (+2.5% cap), upkeep per unit,
+              desertion (DESERTION_CAP), treasury floor, vault (SAFE_GOLD_PER_LEVEL),
+              loot (LOOT_PERCENTAGE), all gold sources/sinks (MG4 ledger).
+combat      : pools/reserves, frontline width (COMBAT_WIDTH=40, +2 tolerance),
+              fill rules, MAX_ROUNDS=25, damage = hard_atk*hard + soft_atk*(1-hard),
+              uniform(0.8,1.2), armor>piercing => x0.5, stances (STANCE_STATS),
+              tactical RPS (get_tactical_bonus), watchtower fort, blacksmith Forge,
+              victory/timeout value resolution, defender tie-advantage, losses dict.
+buildings   : slots (castle_lvl*5), MAX_BUILDING_LEVEL=33, cost base*1.6^lvl,
+              builder -30%, prereqs (req), each building's role, build callback.
+units        : recruit gates, costs, UPKEEP_PER_UNIT, the game_balance backbone,
+              exceptions, RPS results, spy (non-combat).
+espionage    : defense_score, attack_score, ratio tiers (ghost/detected/failed/
+              disaster), scout/heist/sabotage, SPY_CARRY_CAP, SPY_COOLDOWN,
+              WATCHTOWER_DETECT, BASE_DETECTION, SABOTAGE_CHANCE.
+alliances    : ALLIANCE_CREATE_COST, MAX_ALLIANCE_MEMBERS, ALLIANCE_TAG_LEN,
+              create/join/leave/disband, allies cannot attack/spy each other.
+seasons      : meta season, start_new_season, hall_of_fame, season_score reset.
+renown       : earn (battle win + heist), defender-strength scaling, lifetime,
+              leaderboard, perk, never reset across seasons.
+progression  : 10-yr horizon design (MG2), fast hook + bounded summit (MG3),
+              link to balance_overhaul specs.
+protection   : NEWBIE_PROTECTION_SECONDS (24h), check_pvp_allowed.
+tavern       : global chat, MAX_CHAT_LENGTH.
+profiles     : display_name, avatars (AVATAR_IDS), game_id, power score.
+
+RULES
+-----
+- Re-read source before writing each page; cite exact constant values.
+- Keep links valid (relative paths). Update GRAPH.md as pages are added.
+- Update WIKI_PROGRESS.txt after each page/phase.
+- Pause after each phase for user confirmation.
+================================================================================

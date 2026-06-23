@@ -1,0 +1,88 @@
+================================================================================
+MG2 — HONEST LONG HORIZON (RESPECTFUL, NOT DECEPTIVE)
+================================================================================
+
+LAW
+---
+Progression is long but transparent: every session of optimal play yields
+visible progress, full completion takes a finite and DISCLOSED amount of time,
+and the cost curve has no hidden dead zones where the player pays a lot for
+nothing. No dark patterns — the disclosed horizon equals the real horizon.
+
+
+TUNABLES
+--------
+  MAX_BUILDING_LEVEL = 20     # PREREQUISITE (see MG0): the cap that defines "max"
+  HORIZON_MAX_DAYS   = 4380   # 12 YEARS — disclosed real-time to fully max.
+                              # Locked for Option B: the gold-mine alone maxes at
+                              # ~11.45 yr (cap 33), and full account max (incl.
+                              # army scale + Renown) exceeds it, so 12 yr is honest.
+                              # SHARED CONSTANT: must equal MG3.SUMMIT_MAX_DAYS.
+  HORIZON_TOL        = 10%    # real time-to-max must equal disclosed within this
+  MARGINAL_FLOOR     = 0.05   # min benefit-per-gold allowed anywhere on the curve
+  SPIKE_FACTOR       = 2.0    # max allowed cost ratio between adjacent upgrades
+  PROGRESS_BAR_DEF   = "whole-account power = building levels (capped at
+                        MAX_BUILDING_LEVEL each) + army gold-value + Renown.
+                        Option B: the gold-mine ramps early; the long tail is
+                        carried by army growth, raiding, and the Renown prestige
+                        track, so daily play always advances SOMETHING."
+
+DESIGN NOTE (Option B — chosen)
+-------------------------------
+Income stays LINEAR (mine_lvl * 5/min) so the MG0 10-yr gate is untouched. The
+'rewarded every week' guarantee comes from THREE existing/added levers, not from
+mine levels:
+  1. The 24h offline income cap (database.py): daily players bank full income;
+     infrequent players forfeit up to 6/7 of it -> activity is auto-rewarded.
+  2. Combat / raiding loot -> ongoing gold + army growth.
+  3. RENOWN (added): a lifetime, never-decreasing prestige score from real
+     battles & heists, scaled by defender strength. Grants a STUPIDLY SMALL,
+     hard-capped income perk (max +2.5%, config.RENOWN_*) so it motivates
+     long-term play without affecting balance or combat.
+
+
+CRITERIA
+--------
+C1 — No dead days.
+   STATEMENT : Under optimal daily play, every day advances at least one
+               meaningful stat (a building level, a unlock, or net army value).
+   CHECK     : Simulate an optimal player day-by-day from t=0 to HORIZON_MAX_DAYS.
+               Record the progress metric (PROGRESS_BAR_DEF) each day.
+   PASS WHEN : For every simulated day d, progress(d) > progress(d-1).
+
+C2 — Disclosed horizon == real horizon.
+   STATEMENT : The real time to reach 100% (all buildings at cap) equals the
+               publicly stated HORIZON_MAX_DAYS within HORIZON_TOL.
+   CHECK     : Numerically integrate cumulative cost vs achievable income for an
+               optimal strategy; compute days-to-100%.
+   PASS WHEN : |days_to_100 - HORIZON_MAX_DAYS| / HORIZON_MAX_DAYS <= HORIZON_TOL.
+               (Explicitly: NOT secretly longer than disclosed.)
+
+C3 — No hidden wall / dead zone.
+   STATEMENT : Marginal benefit-per-gold never drops below MARGINAL_FLOOR across
+               the entire progression curve.
+   CHECK     : For each upgrade step, compute (benefit gained) / (gold spent),
+               using a benefit metric (power score or sim win-rate delta).
+   PASS WHEN : min over all steps of (benefit/gold) >= MARGINAL_FLOOR.
+
+C4 — Smooth diminishing returns (no deceptive spike).
+   STATEMENT : Cost-per-progress increases monotonically but without sudden
+               cliffs (no single step's cost ratio exceeds the previous by more
+               than a defined factor).
+   CHECK     : Compute cost(step_n+1)/cost(step_n) across the curve.
+   PASS WHEN : Every adjacent cost ratio <= SPIKE_FACTOR (set in TUNABLES, e.g.
+               2.0); curve is monotonic non-decreasing.
+
+
+ANTI-DARK-PATTERN CLAUSE
+------------------------
+This MG explicitly REPLACES any design that makes the player believe completion
+is near while making it secretly unreachable. If C2 reveals real time differs
+from disclosed time beyond tolerance, MG2 FAILS regardless of other criteria.
+
+
+COMPLETION
+----------
+MG2 is COMPLETE when C1, C2, C3, C4 all pass. Re-verify after MG3 (gates),
+MG4 (economy), and any cost-formula change.
+================================================================================

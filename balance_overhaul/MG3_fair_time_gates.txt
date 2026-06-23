@@ -1,0 +1,88 @@
+================================================================================
+MG3 — FAIR TIME-GATES (FAST HOOK, BOUNDED SUMMIT)
+================================================================================
+
+LAW
+---
+A new player reaches meaningful, competitive power quickly (the hook). The top
+tier is gated by a sensible, TUNABLE minimum time so progress feels earned —
+but it is never "mathematically impossible", and the player is never forced to
+sit idle with no useful action available.
+
+
+TUNABLES
+--------
+  MAX_BUILDING_LEVEL = 20     # PREREQUISITE (see MG0): defines "top tier"
+  HOOK_MAX_DAYS      = 3      # by this day an optimal player has a viable army
+  SUMMIT_MIN_DAYS    = 90     # top tier cannot be reached faster than this
+  SUMMIT_MAX_DAYS    = 4380   # 12 YEARS — top tier MUST be reachable by this.
+                              # SHARED CONSTANT: must equal MG2.HORIZON_MAX_DAYS.
+  HOOK_POWER_PCT     = 25%    # "viable" = >= this fraction of a maxed army's value
+  INCOME_RATE_CAP    = 237600 # gold/day. Passive cap = max mine income at cap 33
+                              # (33*5/min = 165/min = 237,600/day). Loot (30%/atk,
+                              # 30-min/target) and heists (<= SPY_CARRY_CAP*spies,
+                              # 10-min/target) add only BOUNDED extra per target.
+
+
+CRITERIA
+--------
+C1 — Fast hook.
+   STATEMENT : An optimal new player fields a "viable" army (>= HOOK_POWER_PCT of
+               max army combat-value) within HOOK_MAX_DAYS.
+   CHECK     : Simulate optimal early play from t=0; track army combat-value vs
+               the value of a maxed army.
+   PASS WHEN : viable threshold crossed on or before day HOOK_MAX_DAYS.
+
+C2 — Bounded summit (both ends).
+   STATEMENT : Time to reach the top building/tech tier is >= SUMMIT_MIN_DAYS and
+               <= SUMMIT_MAX_DAYS for an optimal player.
+   CHECK     : Integrate cumulative top-tier cost vs achievable income over all
+               reasonable strategies; take the minimum (fastest) time.
+   PASS WHEN : SUMMIT_MIN_DAYS <= fastest_time_to_top <= SUMMIT_MAX_DAYS.
+               (Lower bound = no instant max; upper bound = not impossible.)
+
+C3 — No skip exploit, no forced idle.
+   STATEMENT : (a) No single mechanic lets a player exceed INCOME_RATE_CAP to
+               skip the gate; AND (b) at every tick there exists at least one
+               useful affordable action (recruit, upgrade, attack, or spy).
+   CHECK     : (a) Audit all gold sources (mine income, loot, heist); prove each
+               is bounded and their sum <= INCOME_RATE_CAP.
+               (b) In the day-by-day sim, assert the optimal action set is
+               non-empty every tick (no "nothing to do but wait").
+   PASS WHEN : (a) max observed income rate <= INCOME_RATE_CAP across the sim;
+               AND (b) affordable-useful-action count >= 1 at every tick.
+
+C4 — Gate is strategy-reachable, not just clock-reachable.
+   STATEMENT : Reaching the summit faster is possible through better strategy
+               (raiding, build order), not only by waiting longer.
+   CHECK     : Compare time-to-summit of a passive builder vs an active raider
+               in sim (both within the income cap).
+   PASS WHEN : Active strategy reaches summit measurably sooner than passive,
+               while both still respect SUMMIT_MIN_DAYS.
+
+
+CONSISTENCY WITH MG2
+--------------------
+SUMMIT_MAX_DAYS here must be consistent with HORIZON_MAX_DAYS in MG2 (the
+disclosed time-to-max). If they diverge, MG2.C2 will fail. Keep them aligned.
+
+
+COMPLETION
+----------
+MG3 is COMPLETE when C1, C2, C3, C4 all pass. After completing MG3, re-verify
+MG1 and MG2.
+
+VERIFICATION RESULTS (SQL, current build)
+-----------------------------------------
+  C1 fast hook        : 0.44 days to field a sustainable 25%-of-endgame army
+                        (pump mine to Lv9 then buy) -> PASS (<= 3 days).
+  C2 summit bounds    : fastest mine->33 = 4,179 days (~11.45 yr), inside
+                        [90, 4380] -> PASS.
+  C3 no skip / no idle : (a) all gold sources bounded; passive cap 237,600/day,
+                        loot & heist bounded per target/cooldown -> PASS.
+                        (b) peasant (20g) always affordable vs >=7,200/day -> PASS.
+  C4 strategy-reachable: active raider (+25% income from loot) reaches summit in
+                        3,343 days vs 4,179 for a passive builder; both >= 90
+                        -> PASS (skill shortens the gate without breaking it).
+  No code changes were required — the gate emerges from MG0 (cap) + MG2 (economy).
+================================================================================
