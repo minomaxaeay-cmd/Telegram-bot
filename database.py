@@ -462,13 +462,25 @@ def add_chat_message(user_id, username, game_id, message):
     conn.commit()
     conn.close()
 
-def get_chat_messages(limit=10):
+def get_chat_messages(limit=5):
     conn = get_db()
     c = conn.cursor()
-    c.execute("SELECT username, game_id, message FROM chat ORDER BY id DESC LIMIT ?", (limit,))
+    c.execute("SELECT user_id, username, game_id, message FROM chat ORDER BY id DESC LIMIT ?", (limit,))
     rows = c.fetchall()
     conn.close()
     return rows[::-1]
+
+def get_tavern_user_ids(exclude_user_id=None):
+    conn = get_db()
+    c = conn.cursor()
+    if exclude_user_id is None:
+        c.execute("SELECT user_id FROM users WHERE state = 'chatting' AND setup_complete = 1 AND banned = 0")
+    else:
+        c.execute("SELECT user_id FROM users WHERE state = 'chatting' AND setup_complete = 1 AND banned = 0 AND user_id != ?",
+                  (exclude_user_id,))
+    rows = c.fetchall()
+    conn.close()
+    return [row['user_id'] for row in rows]
 
 # --- META / SEASON HELPERS ---
 def get_meta(key, default=None):
