@@ -8,7 +8,7 @@ the `chatting` state and 🔍 Search **sets** `search_player`. See [Commands](ar
 ## States and their flows
 | State | Triggered by | Expects | Result |
 |---|---|---|---|
-| `chatting` | 🍻 [Tavern](tavern.md) | any text | posts to global chat; "🔙 Exit Tavern" leaves |
+| `chatting` | 🍻 [Tavern](tavern.md) | any text | validates and broadcasts to other active Tavern users; "🔙 Exit Tavern" leaves |
 | `search_player` | 🔍 Search | `XXX-XXX` id | opens that lord's [profile](profiles.md) |
 | `{action: dm_write, target_id}` | 💬 Message | text (≤500) | sends a private message |
 | `{action: rename_profile}` | ✏️ Change Name | text (2–20) | updates `display_name` |
