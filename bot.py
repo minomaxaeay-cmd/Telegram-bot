@@ -72,6 +72,34 @@ def esc(value):
         return ""
     return html.escape(str(value))
 
+
+TAVERN_LINK_RE = re.compile(r"(?:https?://|www\.|t\.me/|telegram\.me/)", re.IGNORECASE)
+
+def tavern_sender_link(user):
+    """Clickable Tavern identity label using Telegram's tg://user link."""
+    return (f"<a href=\"tg://user?id={int(user['user_id'])}\">"
+            f"{esc(get_lord_name(user))}({esc(user['game_id'])})</a>")
+
+def format_tavern_message(user, message_text):
+    return f"{tavern_sender_link(user)}: {esc(message_text)}"
+
+def tavern_validation_error(message_text):
+    if len(message_text) > config.MAX_CHAT_LENGTH:
+        return f"❌ Message too long! ({len(message_text)}/{config.MAX_CHAT_LENGTH})"
+    if "@" in message_text:
+        return "❌ Tavern messages cannot include @ mentions."
+    if TAVERN_LINK_RE.search(message_text):
+        return "❌ Tavern messages cannot include links."
+    return None
+
+def send_tavern_message_to_active_lords(sender, message_text):
+    formatted = format_tavern_message(sender, message_text)
+    for tavern_user_id in database.get_tavern_user_ids(exclude_user_id=sender['user_id']):
+        try:
+            bot.send_message(tavern_user_id, formatted, parse_mode="HTML", disable_web_page_preview=True)
+        except Exception:
+            pass
+
 def safe_render(chat_id, text, markup, edit_msg_id=None):
     """Edits the target message in place; if that fails (e.g. it's a photo
     message coming from a profile view), it deletes it and sends a fresh one.
@@ -152,8 +180,12 @@ def send_waive_prompt(chat_id, target_id, context):
 # --- UI HELPERS ---
 def get_lord_name(user):
     """Returns display_name if set, otherwise falls back to Telegram username."""
-    if user.get('display_name'):
-        return user['display_name']
+    try:
+        display_name = user['display_name']
+    except (KeyError, IndexError, TypeError):
+        display_name = None
+    if display_name:
+        return display_name
     return user['username']
 
 def send_profile_view(chat_id, target_user):
@@ -680,12 +712,12 @@ def handle_text(message):
             set_state(user_id, None)
             bot.send_message(user_id, "You leave the tavern.", reply_markup=main_menu())
         else:
+            validation_error = tavern_validation_error(text)
+            if validation_error:
+                bot.send_message(user_id, validation_error)
+                return
             database.add_chat_message(user_id, get_lord_name(user), user['game_id'], text)
-            msgs = database.get_chat_messages()
-            chat_log = "<b>🍻 THE TAVERN</b>\n\n"
-            for m in msgs:
-                chat_log += f"<b>{esc(m['username'])} (<code>{m['game_id']}</code>):</b> {esc(m['message'])}\n"
-            bot.send_message(user_id, chat_log, parse_mode="HTML")
+            send_tavern_message_to_active_lords(user, text)
 
     # B. SEARCH PLAYER
     elif state == "search_player":
@@ -1117,13 +1149,25 @@ def view_reports(message):
 
 def enter_tavern(message):
     set_state(message.chat.id, "chatting")
-    msgs = database.get_chat_messages()
-    chat_log = "<b>🍻 THE TAVERN</b>\n<i>Talk to other lords here.</i>\n\n"
-    for m in msgs:
-        chat_log += f"<b>{esc(m['username'])} (<code>{m['game_id']}</code>):</b> {esc(m['message'])}\n"
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🔙 Exit Tavern")
-    bot.send_message(message.chat.id, chat_log, parse_mode="HTML", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "<b>🍻 THE TAVERN</b>\n<i>You will receive Tavern messages until you leave.</i>",
+        parse_mode="HTML",
+        reply_markup=markup
+    )
+
+    msgs = database.get_chat_messages(limit=5)
+    if msgs:
+        bot.send_message(message.chat.id, "<i>Last 5 Tavern messages:</i>", parse_mode="HTML")
+        for m in msgs:
+            bot.send_message(
+                message.chat.id,
+                format_tavern_message(m, m['message']),
+                parse_mode="HTML",
+                disable_web_page_preview=True
+            )
 
 def view_alliance(message, edit_msg_id=None):
     user_id = message.chat.id
